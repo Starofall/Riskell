@@ -1,0 +1,8 @@
+extra-package-dbs: []
+packages:
+- '.'
+extra-deps:
+- yesod-json-1.2.0
+- flippers-1.0.1
+- either-unwrap-1.1
+resolver: nightly-2015-12-21

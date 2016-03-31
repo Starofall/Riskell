@@ -1,0 +1,18 @@
+<div style="text-align: center">
+    <h1 >Welcome to the Riskell Game
+    <p> Here you can play the Riskell in your browser
+    <br>
+    <p> We play the variant of the popular game with the following rule set:
+    <p> 1) Countries are randomly distributed for all players
+    <p> 2) Cards always give a specific number of points when traded in
+    <p> 3) Domination Mode - Winner is, who owns all countries
+    <br>
+    <br>
+    <h4> Please configure you game
+    <form action=@{CreateGame}>
+              <div>
+                    <input type="radio" name="onlyAI" value="false" checked> With Human
+                    <input type="radio" name="onlyAI" value="true"> AI only
+              <p>Number of Players (2-5) <input type="number" value="2" name="players" min="2" max="5" required>
+              <p>
+                <input type=submit value="Create Game!">

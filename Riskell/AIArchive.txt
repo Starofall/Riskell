@@ -1,0 +1,83 @@
+-- this contains old code - it was a try to implement a AI with a MinMax
+-- as the branching factor for risk is very high (e.g. each attack can be done with 1 to (units-1) of a country)
+-- it was not performing well in predicting good moves. Also with 6 players a game would need at least 7 rounds to see if a move makes sense
+-- and a multiple of 7 would be needed for good moves. So I changed to a rule-based AI which performed acceptable well.
+-- the code is not optimized as it was used to test the idea of MinMax
+
+aiSelectFightTarget :: Player -> Game -> Command
+aiSelectFightTarget p g = fst $ maximumBy (comparing snd) evaluatedCombinations
+    where evaluatedCombinations = map (\(cx,gx) -> (cx,minimax evaluateFightResult possibleFutureFights 4 p gx)) possibleNextResultGames
+          possibleNextResultGames = map (\t -> (t,fromRight $ processGameCommand g t)) (possibleAttackMoves p g)
+          possibleFutureFights :: Player -> Game -> [Game]
+          possibleFutureFights p g = if null potentials then [g] else potentials
+            where potentials = map (\t -> fromRight $ processGameCommand g t) (possibleAttackMoves p g)
+          --Gives more points if player's live looks good
+          evaluateFightResult :: Player -> Game -> Int
+          evaluateFightResult p g = length (playerOwnedCountries p g) + (calculateContinentBonus p g)*2
+
+minimax ::  (Player->Game->Int) -> (Player->Game->[Game]) -> Int -> Player -> Game -> Int
+minimax eval nextMoves depth currentPlayer g1 = runMinimax depth currentPlayer g1
+    where runMinimax :: Int->Player->Game-> Int
+          --this is the last round -> evaluate the list of games
+          runMinimax 0     _           g = eval currentPlayer g
+          --the search is still running so find out new moves and apply them and select the appropriate values
+          runMinimax depth roundPlayer g | roundPlayer == currentPlayer = List.maximum $ map (runMinimax (depth-1) nextPlayer) possibleMoves
+                                         | otherwise                    = List.minimum $ map (runMinimax (depth-1) nextPlayer) possibleMoves
+                                          where possibleMoves = nextMoves nextPlayer g
+                                                nextPlayer = getNextPlayer g
+
+
+-- another idea was to use a Fibonacci Search Tree
+-- here the game goes a random road down the branching tree and marks each node with a tuple of (wins/tries)
+-- so the game would be able to find good moves by trying out moves
+-- but I found out that a round of 5 players in risk can take up to 6000 rounds to finish a game.
+-- so each "try" would take very long to find a Win/Loose statement and many thousands would be needed to get a statistical good result.
+-- also a single move in Riskell is not that highly influencing the world as it would be in e.g. in chess.
+
+-- run the fibTree simulation n times
+nTimes:: Player->Int->Tree->Tree
+nTimes p 0 t = t
+nTimes p x t = nTimes p (x-1) result
+    where (result,won) = fibTree p t
+
+-- a tree with stores the (wins/trys), the current game and a map of command it took to get to another node
+data Tree = Node (Wins, Tries) Game (Map Command Tree) deriving(Eq)
+
+-- print node
+instance Show Tree where
+    show x@(Node (w,t) g map) =  "--" ++ show w ++ "/" ++ show t ++ "#" ++ show (fromIntegral w / fromIntegral t * 100) ++ "-Size:" ++ show (calcChildren x)
+     where calcChildren::Tree->Int
+           calcChildren (Node _ _ map) = Map.foldl (\acc xx -> acc + size map + calcChildren xx) 0 map
+
+-- dummy functions
+winningPlayer::Game->Player
+winningPlayer g = whoWonTheGame g
+gameDone::Game->Bool
+gameDone g = isDone g
+possibleNextCommands::Game->[Command]
+possibleNextCommands g = listNextMovesForGame g
+applyCommand::Game->Command->Game
+applyCommand g c = apply g c
+
+-- the fibTree simulation
+fibTree :: Player->Tree -> (Tree,Bool)
+fibTree p (Node (x,y) g movesMap) = if (gameDone g)
+        -- game is done push up the results
+        then if (winningPlayer g) == p then (Node (x+1,y+1) g empty, True)
+                                       else (Node (x  ,y+1) g empty, False)
+
+        -- okay this was not the final round -> continue digging
+        else do
+             let possibleMoves = possibleNextCommands g
+                 -- here a random is needed (unsafeIO for testing)
+                 moveIndex = unsafePerformIO $ randomRIO (0::Int , length possibleMoves - 1 ::Int )
+                 rndMove = possibleMoves !! moveIndex
+              in case Map.lookup rndMove movesMap of
+                  -- we gone this way before
+                  Just elem -> processElem rndMove elem
+                  -- we never got this way, so create a new node
+                  Nothing   -> processElem rndMove $ Node (0,0) (applyCommand g rndMove) empty
+                where processElem rndMove elemX  = if won then (Node (x+1,y+1) g newMovesMap, won)
+                                                          else (Node (x  ,y+1) g newMovesMap, won)
+                                             where (changedElem,won) = fibTree p elemX -- recursive call
+                                                   newMovesMap       = Map.insert rndMove changedElem movesMap

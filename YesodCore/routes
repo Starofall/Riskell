@@ -1,0 +1,5 @@
+/static             StaticR     Static appStatic
+/                   WelcomePage GET
+/create             CreateGame  GET
+/play/#Int          RenderGame  GET
+/play/#Int/#String  PlayGame    POST
