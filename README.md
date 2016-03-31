@@ -1,3 +1,6 @@
+# Riskell
+![Screenshot](/screenshot.png?raw=true "Screenshot")
+
 # How to start Riskell #
 
 1) Get Stack running on your pc
@@ -13,3 +16,4 @@
 3) Connect to localhost:3000
 
 4) Enjoy the game...
+
